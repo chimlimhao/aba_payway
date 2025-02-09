@@ -1,135 +1,272 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Laravel ABA PayWay Integration
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+This Laravel package provides an easy-to-use integration with ABA PayWay payment gateway. ABA PayWay is a payment solution provided by Advanced Bank of Asia Ltd. (ABA Bank) in Cambodia.
 
-## About ABA PayWay
+## Requirements
 
-It's a payment gateway that offer seamless experience to both the user and the developer. They offer a pretty easy way to integrate into projects either web/app.
+- PHP >= 8.0
+- Laravel >= 9.0
+- SSL Certificate (for production environment)
+- ABA PayWay Merchant Account
 
-## Integration Process
+## Installation
 
-- Manually create a config file within the ```config``` directory "config/**payway.php**"
-- Once created, paste this code into it:
+### Development Environment
 
-    ```php
-    <?php
-    // config/payway.php
-    return [
-        'api_url' => env('ABA_PAYWAY_API_URL'),
-        'api_key' => env('ABA_PAYWAY_API_KEY'),
-        'merchant_id' => env('ABA_PAYWAY_MERCHANT_ID'),
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/aba-payway.git
+cd aba-payway
+```
+
+2. Install dependencies:
+```bash
+composer install
+```
+
+3. Copy the environment file:
+```bash
+cp .env.example .env
+```
+
+4. Configure your development environment variables in `.env`:
+```env
+APP_ENV=local
+APP_DEBUG=true
+
+# ABA PayWay Configuration
+ABA_PAYWAY_API_URL=https://checkout-sandbox.payway.com.kh/api/payment-gateway/v1/payments
+ABA_PAYWAY_API_KEY=your_test_api_key
+ABA_PAYWAY_MERCHANT_ID=your_test_merchant_id
+```
+
+5. Generate application key:
+```bash
+php artisan key:generate
+```
+
+6. Run migrations:
+```bash
+php artisan migrate
+```
+
+7. Start the development server:
+```bash
+php artisan serve
+```
+
+### Production Environment
+
+1. Clone the repository on your production server:
+```bash
+git clone https://github.com/yourusername/aba-payway.git
+cd aba-payway
+```
+
+2. Install dependencies (optimize for production):
+```bash
+composer install --no-dev --optimize-autoloader
+```
+
+3. Copy the environment file:
+```bash
+cp .env.example .env
+```
+
+4. Configure your production environment variables in `.env`:
+```env
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://your-domain.com
+
+# ABA PayWay Configuration
+ABA_PAYWAY_API_URL=https://checkout.payway.com.kh/api/payment-gateway/v1/payments
+ABA_PAYWAY_API_KEY=your_live_api_key
+ABA_PAYWAY_MERCHANT_ID=your_live_merchant_id
+```
+
+5. Generate application key:
+```bash
+php artisan key:generate
+```
+
+6. Optimize the application:
+```bash
+php artisan optimize
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+```
+
+7. Set proper permissions:
+```bash
+chmod -R 755 storage bootstrap/cache
+chown -R www-data:www-data storage bootstrap/cache
+```
+
+8. Configure your web server (Apache/Nginx) with SSL certificate
+
+9. Set up proper security measures:
+   - Enable HTTPS only
+   - Configure firewall rules
+   - Set up proper backup system
+   - Configure error logging
+   - Set up monitoring
+
+## Usage
+
+### 1. Basic Configuration
+
+The package includes a PayWayService that handles the integration with ABA PayWay. The configuration is automatically loaded from your `.env` file through the `config/payway.php` configuration:
+
+```php
+// config/payway.php
+return [
+    'api_url' => env('ABA_PAYWAY_API_URL'),
+    'api_key' => env('ABA_PAYWAY_API_KEY'),
+    'merchant_id' => env('ABA_PAYWAY_MERCHANT_ID'),
+];
+```
+
+### 2. Creating a Payment
+
+```php
+use App\Services\PayWayService;
+
+public function checkout(PayWayService $payWayService)
+{
+    $transactionData = [
+        'tran_id' => time(),  // Unique transaction ID
+        'amount' => '100.00',
+        'items' => [
+            ['name' => 'Product 1', 'quantity' => 1, 'price' => '50.00'],
+            ['name' => 'Product 2', 'quantity' => 1, 'price' => '50.00']
+        ],
+        'firstName' => 'John',
+        'lastName' => 'Doe',
+        'phone' => '0123456789',
+        'email' => 'john@example.com',
+        'shipping' => '0.00',
+        'type' => 'purchase',
+        'currency' => 'USD'
     ];
-    ```
-    It's a configuration file that is used to access to the environment variables that contains sensitive information. It's generally used in larger project/production cause of its flexibility, security, management, and cache cleansing.
-- Manually create the `Services` directory within the `app` directory and create a new file inside called `PayWayService.php`. It should look something like this "app/**Services/PayWayService.php**".
-- Insert these codes in:
-    ```php
-    <?php
-    // app/Services/PayWayService.php
-    namespace App\Services;
 
-    class PayWayService
-    {
-        /**
-         * Get the API URL from the configuration.
-         *
-         * @return string
-         */
-        public function getApiUrl()
-        {
-            return config('payway.api_url');
-        }
+    // Generate hash and return checkout view
+    return view('checkout', $payWayService->prepareCheckout($transactionData));
+}
+```
 
-        /**
-         * Generate the hash for PayWay security.
-         *
-         * @param string $str
-         * @return string
-         */
-        public function getHash($str)
-        {
-            $key = config('payway.api_key');
-            return base64_encode(hash_hmac('sha512', $str, $key, true));
-        }
-    }
-    ```
-    Creating a service class to manage access to environment variables is a good approach, especially if you want to encapsulate logic related to API calls or configuration management in one place. This can make your codebase cleaner, more modular, and easier to maintain.
+### 3. Checkout Form
 
-- In `Providers` directory, create a file "app/Providers/**AppServiceProvider.php**" and insert these codes in:
-    ```php
-    <?php
-    namespace App\Providers;
+Create a checkout form in your blade view (`resources/views/checkout.blade.php`):
 
-    use App\Services\PayWayService;
-    use Illuminate\Support\ServiceProvider;
-
-    class AppServiceProvider extends ServiceProvider
-    {
-        /**
-         * Register any application services.
-         */
-        public function register(): void
-        {
-            $this->app->singleton(PayWayService::class, function ($app) {
-                return new PayWayService();
-            });
-        }
-
-        /**
-         * Bootstrap any application services.
-         */
-        public function boot(): void
-        {
-            //
-        }
-    }
-    ```
+```html
+<form method="POST" action="{{ config('payway.api_url') }}/api/payment-gateway/v1/payments/purchase" id="payway-form">
+    <input type="hidden" name="hash" value="{{ $hash }}">
+    <input type="hidden" name="tran_id" value="{{ $transactionId }}">
+    <input type="hidden" name="amount" value="{{ $amount }}">
+    <input type="hidden" name="firstname" value="{{ $firstName }}">
+    <input type="hidden" name="lastname" value="{{ $lastName }}">
+    <input type="hidden" name="phone" value="{{ $phone }}">
+    <input type="hidden" name="email" value="{{ $email }}">
+    <input type="hidden" name="items" value="{{ $items }}">
+    <input type="hidden" name="shipping" value="{{ $shipping }}">
+    <input type="hidden" name="type" value="{{ $type }}">
+    <input type="hidden" name="currency" value="{{ $currency }}">
+    <input type="hidden" name="merchant_id" value="{{ $merchant_id }}">
+    <input type="hidden" name="req_time" value="{{ $req_time }}">
     
-## Learning Laravel
+    <button type="submit">Proceed to Payment</button>
+</form>
+```
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### 4. Handling Payment Response
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+Create routes and methods to handle successful and failed payments:
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+```php
+// routes/web.php
+Route::post('payment/success', [PaymentController::class, 'handleSuccess']);
+Route::post('payment/cancel', [PaymentController::class, 'handleCancel']);
+```
 
-## Laravel Sponsors
+```php
+// PaymentController.php
+public function handleSuccess(Request $request)
+{
+    // Verify the transaction
+    $isValid = $this->payWayService->verifyTransaction($request->all());
+    
+    if ($isValid) {
+        // Process successful payment
+        return redirect()->route('payment.success');
+    }
+    
+    return redirect()->route('payment.failed');
+}
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+public function handleCancel(Request $request)
+{
+    return redirect()->route('payment.cancelled');
+}
+```
 
-### Premium Partners
+## Security
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+The package includes built-in security features:
 
-## Contributing
+- Hash verification for all transactions
+- SSL encryption for API communication
+- Request validation
+- Timestamp verification
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Testing
 
-## Code of Conduct
+For testing purposes, use the sandbox environment provided by ABA PayWay:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+1. Set `PAYWAY_API_URL` to sandbox URL in your `.env`
+2. Use test credentials provided by ABA PayWay
+3. Test cards are available in the ABA PayWay documentation
 
-## Security Vulnerabilities
+## Error Handling
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Common error codes and their meanings:
+
+- `0`: Success
+- `1`: Invalid hash
+- `2`: Invalid transaction ID
+- `3`: Invalid amount
+- `4`: Invalid currency
+- `5`: Transaction not found
+- `6`: Transaction expired
+
+## Support
+
+For support and issues, please create an issue in the GitHub repository or contact ABA PayWay support for API-specific questions.
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+The Laravel ABA PayWay Integration is open-sourced software licensed under the [MIT License](https://opensource.org/licenses/MIT).
+
+<!-- ```
+MIT License
+
+Copyright (c) 2024 [Your Name]
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE. -->
